@@ -27,7 +27,7 @@ export default function Home() {
     status,
     stop,
   } = useChat({
-    onFinish: ({ messages: finishedMessages }) => {
+    onFinish: async ({ messages: finishedMessages }) => {
       const chatId = activeChatIdRef.current;
 
       if (!chatId) return;
@@ -42,6 +42,27 @@ export default function Home() {
             : conversation
         )
       );
+
+      const lastMessage = finishedMessages[finishedMessages.length - 1];
+
+      if (lastMessage?.role === "assistant") {
+        const content = lastMessage.parts
+          .filter((part) => part.type === "text")
+          .map((part) => part.text)
+          .join("");
+
+        await fetch("/api/conversations/message", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            conversationId: chatId,
+            role: "assistant",
+            content,
+          }),
+        });
+      }
     },
   });
 
@@ -60,23 +81,57 @@ export default function Home() {
 
     const text = input.trim();
 
-    if (messages.length === 0) {
-      const newChat = {
-        id: crypto.randomUUID(),
-        title: text,
-        messages: [],
-      };
+    if (!activeChatIdRef.current) {
+      const response = await fetch("/api/conversations/create", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: "cmu4dchuy00009gvi35ez21fe",
+          title: text,
+          content: text,
+        }),
+      });
 
-      setConversations((previous) => [newChat, ...previous]);
-      setActiveChatId(newChat.id);
-      activeChatIdRef.current = newChat.id;
+      if (!response.ok) {
+        console.error("Failed to create conversation");
+        return;
+      }
+
+      const conversation = await response.json();
+
+      setConversations((previous) => [
+        {
+          id: conversation.id,
+          title: conversation.title,
+          messages: [],
+        },
+        ...previous,
+      ]);
+
+      setActiveChatId(conversation.id);
+      activeChatIdRef.current = conversation.id;
     }
 
-    await sendMessage({
-      text,
-    });
+    const chatId = activeChatIdRef.current;
 
-    setInput("");
+      if (!chatId) return;
+
+      await fetch("/api/conversations/message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversationId: chatId,
+          role: "user",
+          content: text,
+        }),
+      });
+
+      await sendMessage({ text });
+      setInput("");
   }
 
   function handleNewChat() {
