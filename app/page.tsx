@@ -13,6 +13,29 @@ type Conversation = {
   messages: UIMessage[];
 };
 
+function convertDatabaseMessages(messages: any[]): UIMessage[] {
+  return messages.map((message) => ({
+    id: message.id,
+    role: message.role,
+    parts: [
+      {
+        type: "text",
+        text: message.content,
+      },
+    ],
+  }));
+}
+
+function generateTitle(text: string) {
+  const cleanText = text.trim();
+
+  if (cleanText.length <= 40) {
+    return cleanText;
+  }
+
+  return cleanText.slice(0, 40) + "...";
+}
+
 export default function Home() {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -73,6 +96,43 @@ export default function Home() {
     });
   }, [messages]);
 
+  useEffect(() => {
+    async function loadConversations() {
+      const response = await fetch("/api/conversations");
+
+      if (!response.ok) {
+        console.error("Failed to load conversations");
+        return;
+      }
+
+      const data = await response.json();
+
+      const formattedConversations = data.map((conversation: any) => ({
+        id: conversation.id,
+        title: conversation.title,
+        messages: convertDatabaseMessages(conversation.messages),
+      }));
+
+      setConversations(formattedConversations);
+
+      // Automatically restore the most recent conversation
+      if (formattedConversations.length > 0) {
+        const savedChatId = localStorage.getItem("activeChatId");
+
+        const conversationToRestore =
+          formattedConversations.find(
+            (conversation: Conversation) => conversation.id === savedChatId
+          ) ?? formattedConversations[0];
+
+        setActiveChatId(conversationToRestore.id);
+        activeChatIdRef.current = conversationToRestore.id;
+        setMessages(conversationToRestore.messages);
+      }
+    }
+
+    loadConversations();
+  }, []);
+
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -81,7 +141,14 @@ export default function Home() {
 
     const text = input.trim();
 
-    if (!activeChatIdRef.current) {
+    if (status === "streaming" || status === "submitted") {
+      return;
+    }
+
+    let chatId = activeChatIdRef.current;
+
+    // Create a new conversation if needed
+    if (!chatId) {
       const response = await fetch("/api/conversations/create", {
         method: "POST",
         headers: {
@@ -89,8 +156,7 @@ export default function Home() {
         },
         body: JSON.stringify({
           userId: "cmu4dchuy00009gvi35ez21fe",
-          title: text,
-          content: text,
+          title: generateTitle(text),
         }),
       });
 
@@ -101,6 +167,8 @@ export default function Home() {
 
       const conversation = await response.json();
 
+      chatId = conversation.id;
+
       setConversations((previous) => [
         {
           id: conversation.id,
@@ -110,28 +178,33 @@ export default function Home() {
         ...previous,
       ]);
 
-      setActiveChatId(conversation.id);
-      activeChatIdRef.current = conversation.id;
+      setActiveChatId(chatId);
+      activeChatIdRef.current = chatId;
+      localStorage.setItem("activeChatId", conversation.id);
     }
 
-    const chatId = activeChatIdRef.current;
+    // Save the user message
+    const messageResponse = await fetch("/api/conversations/message", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        conversationId: chatId,
+        role: "user",
+        content: text,
+      }),
+    });
 
-      if (!chatId) return;
+    if (!messageResponse.ok) {
+      console.error("Failed to save user message");
+      return;
+    }
 
-      await fetch("/api/conversations/message", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          conversationId: chatId,
-          role: "user",
-          content: text,
-        }),
-      });
+    // Send message to AI
+    await sendMessage({ text });
 
-      await sendMessage({ text });
-      setInput("");
+    setInput("");
   }
 
   function handleNewChat() {
@@ -142,23 +215,33 @@ export default function Home() {
     setMessages([]);
     setActiveChatId(null);
     activeChatIdRef.current = null;
+    localStorage.removeItem("activeChatId");
     setInput("");
   }
 
-  function handleSelectChat(chatId: string) {
-    const chat = conversations.find(
-      (conversation) => conversation.id === chatId
-    );
-
-    if (!chat) return;
-
+  async function handleSelectChat(chatId: string) {
     if (status === "streaming" || status === "submitted") {
       stop();
     }
 
-    setActiveChatId(chat.id);
-    activeChatIdRef.current = chat.id;
-    setMessages(chat.messages);
+    localStorage.setItem("activeChatId", chatId);
+
+    const response = await fetch(`/api/conversations/${chatId}`);
+
+    if (!response.ok) {
+      console.error("Failed to load conversation");
+      return;
+    }
+
+    const conversation = await response.json();
+
+    const formattedMessages = convertDatabaseMessages(
+      conversation.messages
+    );
+
+    setActiveChatId(chatId);
+    activeChatIdRef.current = chatId;
+    setMessages(formattedMessages);
   }
 
   return (

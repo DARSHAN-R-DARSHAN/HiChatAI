@@ -11,5 +11,14 @@ export async function POST(request: Request) {
     },
   });
 
+  await prisma.conversation.update({
+    where: {
+      id: conversationId,
+    },
+    data: {
+      updatedAt: new Date(),
+    },
+  });
+
   return Response.json(message);
 }
