@@ -42,6 +42,7 @@ export default function Home() {
   const activeChatIdRef = useRef<string | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
 
   const {
     messages,
@@ -86,6 +87,10 @@ export default function Home() {
           }),
         });
       }
+    },
+    onError: (error) => {
+      console.error("CHAT ERROR:", error);
+      setChatError("Something went wrong. Please try again.");
     },
   });
 
@@ -140,6 +145,7 @@ export default function Home() {
     if (!input.trim()) return;
 
     const text = input.trim();
+    setChatError(null);
 
     if (status === "streaming" || status === "submitted") {
       return;
@@ -374,6 +380,11 @@ export default function Home() {
             <div ref={messagesEndRef} />
           </div>
         </div>
+        {chatError && (
+          <div className="mx-auto mb-3 max-w-3xl rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {chatError}
+          </div>
+        )}
 
         {/* Input */}
         <div className="border-t px-4 py-4">

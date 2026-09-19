@@ -12,6 +12,19 @@ export async function POST(request: Request) {
   }
 
   const { conversationId, role, content } = await request.json();
+  if (
+    typeof conversationId !== "string" ||
+    !conversationId.trim() ||
+    typeof role !== "string" ||
+    !["user", "assistant"].includes(role) ||
+    typeof content !== "string" ||
+    !content.trim()
+  ) {
+    return Response.json(
+      { error: "Invalid message data" },
+      { status: 400 }
+    );
+  }
 
   const conversation = await prisma.conversation.findFirst({
     where: {

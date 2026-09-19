@@ -12,6 +12,16 @@ export async function POST(request: Request) {
   }
 
   const { title } = await request.json();
+  if (
+    typeof title !== "string" ||
+    !title.trim() ||
+    title.length > 100
+  ) {
+    return Response.json(
+      { error: "Invalid conversation title" },
+      { status: 400 }
+    );
+  }
 
   const conversation = await prisma.conversation.create({
     data: {
