@@ -155,7 +155,6 @@ export default function Home() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: "cmu4dchuy00009gvi35ez21fe",
           title: generateTitle(text),
         }),
       });
