@@ -1,10 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
 import { prisma } from "../../../lib/prisma";
+import { getCurrentUser } from "../../../lib/current-user";
 
 export async function GET() {
-  const { userId: clerkUserId } = await auth();
+  const user = await getCurrentUser();
 
-  if (!clerkUserId) {
+  if (!user) {
     return Response.json(
       { error: "Unauthorized" },
       { status: 401 }
@@ -13,9 +13,7 @@ export async function GET() {
 
   const conversations = await prisma.conversation.findMany({
     where: {
-      user: {
-        clerkId: clerkUserId,
-      },
+      userId: user.id,
     },
     orderBy: {
       updatedAt: "desc",

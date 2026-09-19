@@ -1,10 +1,10 @@
-import { auth } from "@clerk/nextjs/server";
 import { prisma } from "../../../../lib/prisma";
+import { getCurrentUser } from "../../../../lib/current-user";
 
 export async function POST(request: Request) {
-  const { userId: clerkUserId } = await auth();
+  const user = await getCurrentUser();
 
-  if (!clerkUserId) {
+  if (!user) {
     return Response.json(
       { error: "Unauthorized" },
       { status: 401 }
@@ -16,9 +16,7 @@ export async function POST(request: Request) {
   const conversation = await prisma.conversation.findFirst({
     where: {
       id: conversationId,
-      user: {
-        clerkId: clerkUserId,
-      },
+      userId: user.id,
     },
   });
 
