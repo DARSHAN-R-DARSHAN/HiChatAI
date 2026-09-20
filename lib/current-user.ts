@@ -27,8 +27,17 @@ export async function getCurrentUser() {
       throw new Error("Clerk user has no email address");
     }
 
-    user = await prisma.user.create({
-      data: {
+    user = await prisma.user.upsert({
+      where: {
+        clerkId: clerkUserId,
+      },
+      update: {
+        email,
+        name: clerkUser.firstName
+          ? `${clerkUser.firstName} ${clerkUser.lastName ?? ""}`.trim()
+          : null,
+      },
+      create: {
         clerkId: clerkUserId,
         email,
         name: clerkUser.firstName

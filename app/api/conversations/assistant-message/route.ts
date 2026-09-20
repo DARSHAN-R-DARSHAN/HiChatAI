@@ -11,16 +11,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const { conversationId, role, content } = await request.json();
+  const { conversationId, content } = await request.json();
+
   if (
     typeof conversationId !== "string" ||
     !conversationId.trim() ||
-    role !== "user" ||
     typeof content !== "string" ||
     !content.trim()
   ) {
     return Response.json(
-      { error: "Invalid message data" },
+      { error: "Invalid assistant message data" },
       { status: 400 }
     );
   }
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const message = await prisma.message.create({
     data: {
       conversationId,
-      role,
+      role: "assistant",
       content,
     },
   });

@@ -12,6 +12,7 @@ export async function POST(request: Request) {
   }
 
   const { title } = await request.json();
+
   if (
     typeof title !== "string" ||
     !title.trim() ||
@@ -23,9 +24,11 @@ export async function POST(request: Request) {
     );
   }
 
+  const cleanTitle = title.trim();
+
   const conversation = await prisma.conversation.create({
     data: {
-      title,
+      title: cleanTitle,
       userId: user.id,
     },
   });
