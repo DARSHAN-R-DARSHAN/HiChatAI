@@ -54,6 +54,7 @@ export default function Home() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
   const { isLoaded, isSignedIn } = useAuth();
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
     if (typeof window === "undefined") {
@@ -426,6 +427,73 @@ export default function Home() {
 
   return (
     <main className="flex h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+      {mobileSidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40 md:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
+        />
+      )}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-200 bg-gray-50 p-3 transition-transform duration-200 dark:border-gray-800 dark:bg-gray-900 md:hidden ${
+          mobileSidebarOpen
+            ? "translate-x-0"
+            : "-translate-x-full"
+        }`}
+      >
+        <div className="flex items-center justify-between">
+          <span className="px-3 text-sm font-semibold">
+            HiChatAI
+          </span>
+
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="rounded-lg p-2 hover:bg-gray-200 dark:hover:bg-gray-800"
+            aria-label="Close sidebar"
+          >
+            ✕
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            handleNewChat();
+            setMobileSidebarOpen(false);
+          }}
+          className="mt-4 flex w-full items-center gap-3 rounded-lg px-3 py-3 text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-800"
+        >
+          <Plus size={18} />
+          New chat
+        </button>
+
+        <div className="mt-6 flex-1 overflow-y-auto">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase text-gray-500">
+            Recent
+          </p>
+
+          <div className="space-y-1">
+            {conversations.map((chat) => (
+              <button
+                key={chat.id}
+                type="button"
+                onClick={() => {
+                  handleSelectChat(chat.id);
+                  setMobileSidebarOpen(false);
+                }}
+                className={`w-full truncate rounded-lg px-3 py-2.5 text-left text-sm ${
+                  activeChatId === chat.id
+                    ? "bg-gray-200 dark:bg-gray-800"
+                    : "hover:bg-gray-200 dark:hover:bg-gray-800"
+                }`}
+              >
+                {chat.title}
+              </button>
+            ))}
+          </div>
+        </div>
+      </aside>
       {/* Sidebar */}
       <aside className="hidden w-64 flex-col border-r border-gray-200 bg-gray-50 p-3 dark:border-gray-800 dark:bg-gray-900 md:flex">
 
@@ -489,7 +557,10 @@ export default function Home() {
           <div className="flex items-center gap-3">
 
             <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(true)}
               className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-gray-800 md:hidden"
+              aria-label="Open sidebar"
             >
               <Menu size={20} />
             </button>
