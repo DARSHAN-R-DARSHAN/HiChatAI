@@ -55,6 +55,7 @@ export default function Home() {
   const [chatError, setChatError] = useState<string | null>(null);
   const { isLoaded, isSignedIn } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [conversationSearch, setConversationSearch] = useState("");
 
   const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
     if (typeof window === "undefined") {
@@ -73,6 +74,12 @@ export default function Home() {
 
     return "system";
   });
+
+  const filteredConversations = conversations.filter((chat) =>
+    chat.title
+      .toLowerCase()
+      .includes(conversationSearch.toLowerCase())
+  );
 
   const {
     messages,
@@ -469,12 +476,19 @@ export default function Home() {
         </button>
 
         <div className="mt-6 flex-1 overflow-y-auto">
+          <input
+            type="text"
+            value={conversationSearch}
+            onChange={(e) => setConversationSearch(e.target.value)}
+            placeholder="Search chats..."
+            className="mb-4 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-gray-400 focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:placeholder:text-gray-500"
+          />
           <p className="mb-2 px-3 text-xs font-semibold uppercase text-gray-500">
             Recent
           </p>
 
           <div className="space-y-1">
-            {conversations.map((chat) => (
+            {filteredConversations.map((chat) => (
               <button
                 key={chat.id}
                 type="button"
@@ -508,12 +522,20 @@ export default function Home() {
 
         {/* Recent */}
         <div className="mt-6 flex-1 overflow-y-auto">
+          <input
+            type="text"
+            value={conversationSearch}
+            onChange={(e) => setConversationSearch(e.target.value)}
+            placeholder="Search chats..."
+            className="mb-4 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm outline-none placeholder:text-gray-400 focus:border-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:placeholder:text-gray-500"
+          />
+
           <p className="mb-2 px-3 text-xs font-semibold uppercase text-gray-500">
             Recent
           </p>
 
           <div className="space-y-1">
-            {conversations.map((chat) => (
+            {filteredConversations.map((chat) => (
               <button
                 key={chat.id}
                 onClick={() => handleSelectChat(chat.id)}
