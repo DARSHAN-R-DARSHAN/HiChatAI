@@ -56,6 +56,7 @@ export default function Home() {
   const { isLoaded, isSignedIn } = useAuth();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [conversationSearch, setConversationSearch] = useState("");
+  const [chatToDelete, setChatToDelete] = useState<string | null>(null);
 
   const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
     if (typeof window === "undefined") {
@@ -316,6 +317,31 @@ export default function Home() {
     setMessages(formattedMessages);
   }
 
+  async function handleDeleteChat(chatId: string) {
+    const response = await fetch(
+      `/api/conversations/${chatId}`,
+      {
+        method: "DELETE",
+      }
+    );
+
+    if (!response.ok) {
+      setChatError("Failed to delete chat. Please try again.");
+      return;
+    }
+
+    setConversations((previous) =>
+      previous.filter((chat) => chat.id !== chatId)
+    );
+
+    if (activeChatIdRef.current === chatId) {
+      setMessages([]);
+      setActiveChatId(null);
+      activeChatIdRef.current = null;
+      localStorage.removeItem("activeChatId");
+    }
+  }
+
   async function regenerateResponse() {
     const chatId = activeChatIdRef.current;
 
@@ -536,17 +562,32 @@ export default function Home() {
 
           <div className="space-y-1">
             {filteredConversations.map((chat) => (
-              <button
+              <div
                 key={chat.id}
-                onClick={() => handleSelectChat(chat.id)}
-                className={`w-full truncate rounded-lg px-3 py-2.5 text-left text-sm transition ${
+                className={`group flex items-center rounded-lg ${
                   activeChatId === chat.id
                     ? "bg-gray-200 dark:bg-gray-800"
                     : "hover:bg-gray-200 dark:hover:bg-gray-800"
                 }`}
               >
-                {chat.title}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelectChat(chat.id)}
+                  className="min-w-0 flex-1 truncate px-3 py-2.5 text-left text-sm"
+                >
+                  {chat.title}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setChatToDelete(chat.id)}
+                  className="mr-1 rounded-md p-1.5 text-gray-400 opacity-0 transition group-hover:opacity-100 hover:bg-gray-300 hover:text-red-600 dark:hover:bg-gray-700"
+                  aria-label={`Delete ${chat.title}`}
+                  title="Delete chat"
+                >
+                  ×
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -884,6 +925,43 @@ export default function Home() {
             </p>
           </form>
         </div>
+        {chatToDelete && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+            <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+              <h2 className="text-lg font-semibold">
+                Delete this chat?
+              </h2>
+
+              <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                This conversation and its messages will be permanently deleted.
+              </p>
+
+              <div className="mt-6 flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setChatToDelete(null)}
+                  className="rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const id = chatToDelete;
+
+                    setChatToDelete(null);
+
+                    await handleDeleteChat(id);
+                  }}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
     </main>
   );
