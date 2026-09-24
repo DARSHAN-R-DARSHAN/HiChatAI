@@ -15,6 +15,7 @@ import {
   Moon,
   Monitor,
   Copy,
+  MoreHorizontal,
 } from "lucide-react";
 
 type Conversation = {
@@ -57,6 +58,9 @@ export default function Home() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [conversationSearch, setConversationSearch] = useState("");
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
+  const [chatToRename, setChatToRename] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [openChatMenu, setOpenChatMenu] = useState<string | null>(null);
 
   const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
     if (typeof window === "undefined") {
@@ -416,6 +420,47 @@ export default function Home() {
     await sendMessage({ text });
   }
 
+  async function handleRenameChat(chatId: string) {
+    const title = renameValue.trim();
+
+    if (!title) {
+      setChatError("Chat title cannot be empty.");
+      return;
+    }
+
+    const response = await fetch(
+      `/api/conversations/${chatId}`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      setChatError("Failed to rename chat. Please try again.");
+      return;
+    }
+
+    setConversations((previous) =>
+      previous.map((chat) =>
+        chat.id === chatId
+          ? {
+              ...chat,
+              title,
+            }
+          : chat
+      )
+    );
+
+    setChatToRename(null);
+    setRenameValue("");
+  }
+
   if (!isLoaded) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black">
@@ -515,22 +560,67 @@ export default function Home() {
 
           <div className="space-y-1">
             {filteredConversations.map((chat) => (
+            <div
+              key={chat.id}
+              className={`group relative flex items-center rounded-lg ${
+                activeChatId === chat.id
+                  ? "bg-gray-200 dark:bg-gray-800"
+                  : "hover:bg-gray-200 dark:hover:bg-gray-800"
+              }`}
+            >
               <button
-                key={chat.id}
                 type="button"
-                onClick={() => {
-                  handleSelectChat(chat.id);
-                  setMobileSidebarOpen(false);
-                }}
-                className={`w-full truncate rounded-lg px-3 py-2.5 text-left text-sm ${
-                  activeChatId === chat.id
-                    ? "bg-gray-200 dark:bg-gray-800"
-                    : "hover:bg-gray-200 dark:hover:bg-gray-800"
-                }`}
+                onClick={() => handleSelectChat(chat.id)}
+                className="min-w-0 flex-1 truncate px-3 py-2.5 text-left text-sm"
               >
                 {chat.title}
               </button>
-            ))}
+
+              <div className="relative pr-1">
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.stopPropagation();
+
+                    setOpenChatMenu((current) =>
+                      current === chat.id ? null : chat.id
+                    );
+                  }}
+                  className="rounded-md p-1.5 text-gray-400 hover:bg-gray-300 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+                  aria-label={`Options for ${chat.title}`}
+                >
+                  <MoreHorizontal size={18} />
+                </button>
+
+                {openChatMenu === chat.id && (
+                  <div className="absolute right-0 top-9 z-50 w-36 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChatToRename(chat.id);
+                        setRenameValue(chat.title);
+                        setOpenChatMenu(null);
+                      }}
+                      className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                    >
+                      Rename
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setChatToDelete(chat.id);
+                        setOpenChatMenu(null);
+                      }}
+                      className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-gray-700"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
           </div>
         </div>
       </aside>
@@ -564,7 +654,7 @@ export default function Home() {
             {filteredConversations.map((chat) => (
               <div
                 key={chat.id}
-                className={`group flex items-center rounded-lg ${
+                className={`group relative flex items-center rounded-lg ${
                   activeChatId === chat.id
                     ? "bg-gray-200 dark:bg-gray-800"
                     : "hover:bg-gray-200 dark:hover:bg-gray-800"
@@ -578,15 +668,49 @@ export default function Home() {
                   {chat.title}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setChatToDelete(chat.id)}
-                  className="mr-1 rounded-md p-1.5 text-gray-400 opacity-0 transition group-hover:opacity-100 hover:bg-gray-300 hover:text-red-600 dark:hover:bg-gray-700"
-                  aria-label={`Delete ${chat.title}`}
-                  title="Delete chat"
-                >
-                  ×
-                </button>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+
+                      setOpenChatMenu((current) =>
+                        current === chat.id ? null : chat.id
+                      );
+                    }}
+                    className="rounded-md p-1.5 text-gray-400 hover:bg-gray-300 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+                    aria-label={`Options for ${chat.title}`}
+                  >
+                    <MoreHorizontal size={18} />
+                  </button>
+
+                  {openChatMenu === chat.id && (
+                    <div className="absolute right-0 top-9 z-50 w-36 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChatToRename(chat.id);
+                          setRenameValue(chat.title);
+                          setOpenChatMenu(null);
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-gray-100 dark:hover:bg-gray-700"
+                      >
+                        Rename
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setChatToDelete(chat.id);
+                          setOpenChatMenu(null);
+                        }}
+                        className="w-full rounded-lg px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 dark:hover:bg-gray-700"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -926,7 +1050,7 @@ export default function Home() {
           </form>
         </div>
         {chatToDelete && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4">
+          <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 px-4">
             <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
               <h2 className="text-lg font-semibold">
                 Delete this chat?
@@ -961,7 +1085,49 @@ export default function Home() {
               </div>
             </div>
           </div>
-        )}
+        )}{chatToRename && (
+            <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/40 px-4">
+              <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-gray-900">
+                <h2 className="text-lg font-semibold">
+                  Rename chat
+                </h2>
+
+                <input
+                  type="text"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  maxLength={100}
+                  autoFocus
+                  className="mt-4 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800"
+                />
+
+                <div className="mt-6 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setChatToRename(null);
+                      setRenameValue("");
+                    }}
+                    className="rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800"
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (chatToRename) {
+                        handleRenameChat(chatToRename);
+                      }
+                    }}
+                    className="rounded-lg bg-black px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 dark:bg-white dark:text-black"
+                  >
+                    Save
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
       </section>
     </main>
   );
