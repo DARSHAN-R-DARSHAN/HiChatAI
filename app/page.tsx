@@ -155,6 +155,20 @@ export default function Home() {
   }, [theme]);
 
   useEffect(() => {
+    function handleClickOutside() {
+      setOpenChatMenu(null);
+    }
+
+    if (openChatMenu) {
+      document.addEventListener("click", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+    };
+  }, [openChatMenu]);
+
+  useEffect(() => {
     messagesEndRef.current?.scrollIntoView({
       behavior: "auto",
     });
@@ -593,7 +607,9 @@ export default function Home() {
                 </button>
 
                 {openChatMenu === chat.id && (
-                  <div className="absolute right-0 top-9 z-50 w-36 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
+                  <div
+                    onClick={(event) => event.stopPropagation()} 
+                    className="absolute right-0 top-9 z-50 w-36 rounded-xl border border-gray-200 bg-white p-1 shadow-lg dark:border-gray-700 dark:bg-gray-800">
                     <button
                       type="button"
                       onClick={() => {
@@ -985,8 +1001,19 @@ export default function Home() {
           </div>
         </div>
         {chatError && (
-          <div className="mx-auto mb-3 max-w-3xl rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {chatError}
+          <div className="mx-auto mb-4 flex max-w-3xl items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300">
+            <span>{chatError}</span>
+
+            <button
+              type="button"
+              onClick={() => {
+                setChatError(null);
+                regenerateResponse();
+              }}
+              className="ml-4 font-medium underline hover:no-underline"
+            >
+              Retry
+            </button>
           </div>
         )}
 
