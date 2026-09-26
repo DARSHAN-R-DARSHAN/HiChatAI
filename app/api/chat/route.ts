@@ -2,6 +2,7 @@ import { convertToModelMessages, streamText } from "ai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { getCurrentUser } from "../../../lib/current-user";
 import { rateLimit } from "../../../lib/rate-limit";
+import { prisma } from "../../../lib/prisma";
 
 
 const openrouter = createOpenRouter({
@@ -26,11 +27,54 @@ export async function POST(request: Request) {
       );
     }
 
-    const { messages } = await request.json();
+    const { messages, conversationId } = await request.json();
+
+    if (
+      typeof conversationId !== "string" ||
+      !conversationId.trim()
+    ) {
+      return Response.json(
+        { error: "Invalid conversation ID" },
+        { status: 400 }
+      );
+    }
+
+    const conversation = await prisma.conversation.findFirst({
+      where: {
+        id: conversationId,
+        userId: user.id,
+      },
+    });
+
+    if (!conversation) {
+      return Response.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
+    }
 
     const result = streamText({
       model: openrouter("openrouter/free"),
       messages: await convertToModelMessages(messages),
+
+      onFinish: async ({ text }) => {
+        await prisma.message.create({
+          data: {
+            conversationId,
+            role: "assistant",
+            content: text,
+          },
+        });
+
+        await prisma.conversation.update({
+          where: {
+            id: conversationId,
+          },
+          data: {
+            updatedAt: new Date(),
+          },
+        });
+      },
     });
 
     return result.toUIMessageStreamResponse();

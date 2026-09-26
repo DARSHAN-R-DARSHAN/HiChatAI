@@ -1,7 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import type { UIMessage } from "ai";
+import { DefaultChatTransport, type UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import CodeBlock from "@/components/CodeBlock";
@@ -93,6 +93,12 @@ export default function Home() {
     status,
     stop,
   } = useChat({
+    transport: new DefaultChatTransport({
+      api: "/api/chat",
+      body: () => ({
+        conversationId: activeChatIdRef.current,
+      }),
+    }),
     onFinish: async ({ messages: finishedMessages }) => {
       const chatId = activeChatIdRef.current;
 
