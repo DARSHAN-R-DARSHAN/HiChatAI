@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import CodeBlock from "@/components/CodeBlock";
 import { UserButton } from "@clerk/nextjs";
-import { useAuth } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import {
   Menu,
   Plus,
@@ -16,7 +16,9 @@ import {
   Monitor,
   Copy,
   MoreHorizontal,
+  Settings,
 } from "lucide-react";
+import SettingsModal from "@/components/SettingsModal";
 
 type Conversation = {
   id: string;
@@ -54,30 +56,29 @@ export default function Home() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
-  const { isLoaded, isSignedIn } = useAuth();
+  const { isLoaded, isSignedIn, userId } = useAuth();
+  const { user } = useUser();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [conversationSearch, setConversationSearch] = useState("");
   const [chatToDelete, setChatToDelete] = useState<string | null>(null);
   const [chatToRename, setChatToRename] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [openChatMenu, setOpenChatMenu] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const [theme, setTheme] = useState<"light" | "dark" | "system">(() => {
+  const [theme, setTheme] = useState<
+    "light" | "dark" | "system"
+  >(() => {
     if (typeof window === "undefined") {
       return "system";
     }
 
-    const savedTheme = localStorage.getItem("theme");
-
-    if (
-      savedTheme === "light" ||
-      savedTheme === "dark" ||
-      savedTheme === "system"
-    ) {
-      return savedTheme;
-    }
-
-    return "system";
+    return (
+      (localStorage.getItem("theme") as
+        | "light"
+        | "dark"
+        | "system") || "system"
+    );
   });
 
   const filteredConversations = conversations.filter((chat) =>
@@ -114,26 +115,6 @@ export default function Home() {
             : conversation
         )
       );
-
-      const lastMessage = finishedMessages[finishedMessages.length - 1];
-
-      if (lastMessage?.role === "assistant") {
-        const content = lastMessage.parts
-          .filter((part) => part.type === "text")
-          .map((part) => part.text)
-          .join("");
-
-        await fetch("/api/conversations/assistant-message", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-          conversationId: chatId,
-          content,
-        }),
-        });
-      }
     },
     onError: (error) => {
       console.error("CHAT ERROR:", error);
@@ -145,16 +126,14 @@ export default function Home() {
   useEffect(() => {
     const root = document.documentElement;
 
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else if (theme === "light") {
-      root.classList.remove("dark");
-    } else {
+    if (theme === "system") {
       const prefersDark = window.matchMedia(
         "(prefers-color-scheme: dark)"
       ).matches;
 
       root.classList.toggle("dark", prefersDark);
+    } else {
+      root.classList.toggle("dark", theme === "dark");
     }
 
     localStorage.setItem("theme", theme);
@@ -740,18 +719,24 @@ export default function Home() {
 
         {/* User area */}
         <div className="mt-3 border-t border-gray-200 pt-3 dark:border-gray-800">
-          <div className="flex items-center gap-3 rounded-lg px-3 py-2">
+          <div className="flex items-center gap-2 rounded-xl px-2 py-2 hover:bg-gray-100 dark:hover:bg-gray-800">
             <UserButton />
 
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium">
-                Account
-              </p>
-
-              <p className="text-xs text-gray-500">
-                Manage account
+                {user?.fullName || "User"}
               </p>
             </div>
+
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="rounded-lg p-2 text-gray-500 hover:bg-gray-200 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100"
+              aria-label="Settings"
+              title="Settings"
+            >
+              <Settings size={18} />
+            </button>
           </div>
         </div>
 
@@ -1162,6 +1147,15 @@ export default function Home() {
             </div>
           )}
       </section>
+      {settingsOpen && (
+        <SettingsModal
+          theme={theme}
+          setTheme={setTheme}
+          userName={user?.fullName || "User"}
+          userEmail={user?.primaryEmailAddress?.emailAddress || ""}
+          onClose={() => setSettingsOpen(false)}
+        />
+      )}
     </main>
   );
 }
