@@ -53,6 +53,7 @@ export default function Home() {
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const activeChatIdRef = useRef<string | null>(null);
+  const isSubmittingRef = useRef(false);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -206,73 +207,89 @@ export default function Home() {
 
     if (!input.trim()) return;
 
-    const text = input.trim();
-    setChatError(null);
+    if (isSubmittingRef.current) {
+      return;
+    }
 
     if (status === "streaming" || status === "submitted") {
       return;
     }
 
-    let chatId = activeChatIdRef.current;
+    isSubmittingRef.current = true;
 
-    // Create a new conversation if needed
-    if (!chatId) {
-      const response = await fetch("/api/conversations/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: generateTitle(text),
-        }),
-      });
-
-      if (!response.ok) {
-        console.error("Failed to create conversation");
-        return;
-      }
-
-      const conversation = await response.json();
-
-      chatId = conversation.id;
-
-      setConversations((previous) => [
-        {
-          id: conversation.id,
-          title: conversation.title,
-          messages: [],
-        },
-        ...previous,
-      ]);
-
-      setActiveChatId(chatId);
-      activeChatIdRef.current = chatId;
-      localStorage.setItem("activeChatId", conversation.id);
-    }
-
-    // Save the user message
-    const messageResponse = await fetch("/api/conversations/message", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        conversationId: chatId,
-        role: "user",
-        content: text,
-      }),
-    });
-
-    if (!messageResponse.ok) {
-      console.error("Failed to save user message");
-      setChatError("Failed to send your message. Please try again.");
-      return;
-    }
-
-    // Send message to AI
-    await sendMessage({ text });
+    const text = input.trim();
 
     setInput("");
+    setChatError(null);
+
+    try {
+      let chatId = activeChatIdRef.current;
+
+      // Create a new conversation if needed
+      if (!chatId) {
+        const response = await fetch("/api/conversations/create", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            title: generateTitle(text),
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to create conversation");
+        }
+
+        const conversation = await response.json();
+
+        chatId = conversation.id;
+
+        setConversations((previous) => [
+          {
+            id: conversation.id,
+            title: conversation.title,
+            messages: [],
+          },
+          ...previous,
+        ]);
+
+        setActiveChatId(chatId);
+        activeChatIdRef.current = chatId;
+        localStorage.setItem("activeChatId", conversation.id);
+      }
+
+      // Save the user message
+      const messageResponse = await fetch(
+        "/api/conversations/message",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            conversationId: chatId,
+            role: "user",
+            content: text,
+          }),
+        }
+      );
+
+      if (!messageResponse.ok) {
+        throw new Error("Failed to save user message");
+      }
+
+      // Send message to AI
+      await sendMessage({ text });
+    } catch (error) {
+      console.error("SUBMIT ERROR:", error);
+
+      setChatError(
+        "Failed to send your message. Please try again."
+      );
+    } finally {
+      isSubmittingRef.current = false;
+    }
   }
 
   function handleNewChat() {
