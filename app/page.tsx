@@ -426,11 +426,27 @@ export default function Home() {
       )?.index;
 
     if (lastAssistantIndex !== undefined) {
-      setMessages(
-        currentMessages.filter(
-          (_, index) => index !== lastAssistantIndex
-        )
+      const messagesWithoutLastAssistant = currentMessages.filter(
+        (_, index) => index !== lastAssistantIndex
       );
+
+      const lastUserIndex = [...messagesWithoutLastAssistant]
+        .map((message, index) => ({
+          message,
+          index,
+        }))
+        .reverse()
+        .find(({ message }) => message.role === "user")?.index;
+
+      if (lastUserIndex !== undefined) {
+        setMessages(
+          messagesWithoutLastAssistant.filter(
+            (_, index) => index !== lastUserIndex
+          )
+        );
+      } else {
+        setMessages(messagesWithoutLastAssistant);
+      }
     }
 
     await sendMessage({ text });
@@ -1050,7 +1066,10 @@ export default function Home() {
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
                   placeholder="Message HiChatAI..."
-                  disabled={status === "streaming"}
+                  disabled={
+                    status === "submitted" ||
+                    status === "streaming"
+                  }
                   className="flex-1 bg-transparent py-3 text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-100"
                 />
 
