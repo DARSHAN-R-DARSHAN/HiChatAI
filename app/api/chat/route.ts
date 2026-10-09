@@ -58,6 +58,7 @@ export async function POST(request: Request) {
       messages: await convertToModelMessages(messages),
 
       onFinish: async ({ text }) => {
+        // console.log("FINAL MODEL OUTPUT:", JSON.stringify(text));
         await prisma.message.create({
           data: {
             conversationId,
