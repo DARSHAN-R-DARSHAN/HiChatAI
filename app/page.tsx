@@ -19,6 +19,7 @@ import {
   Settings,
 } from "lucide-react";
 import SettingsModal from "@/components/SettingsModal";
+import remarkGfm from "remark-gfm";
 
 type Conversation = {
   id: string;
@@ -945,9 +946,15 @@ export default function Home() {
                             return null;
                           }
 
+                          // console.log(
+                          //   "RAW AI MARKDOWN:",
+                          //   JSON.stringify(part.text)
+                          // );
+
                           return (
                             <ReactMarkdown
                               key={index}
+                              remarkPlugins={[remarkGfm]}
                               components={{
                                 code({
                                   className,
@@ -978,9 +985,95 @@ export default function Home() {
                                     </code>
                                   );
                                 },
+                                h1({ children }) {
+                                  return (
+                                    <h1 className="mb-4 mt-6 text-2xl font-bold tracking-tight">
+                                      {children}
+                                    </h1>
+                                  );
+                                },
+
+                                h2({ children }) {
+                                  return (
+                                    <h2 className="mb-3 mt-5 text-xl font-semibold tracking-tight">
+                                      {children}
+                                    </h2>
+                                  );
+                                },
+
+                                h3({ children }) {
+                                  return (
+                                    <h3 className="mb-2 mt-4 text-lg font-semibold">
+                                      {children}
+                                    </h3>
+                                  );
+                                },
+
+                                p({ children }) {
+                                  return (
+                                    <p className="mb-4 leading-7 last:mb-0">
+                                      {children}
+                                    </p>
+                                  );
+                                },
+
+                                ul({ children }) {
+                                  return (
+                                    <ul className="mb-4 ml-6 list-disc space-y-2">
+                                      {children}
+                                    </ul>
+                                  );
+                                },
+
+                                ol({ children }) {
+                                  return (
+                                    <ol className="mb-4 ml-6 list-decimal space-y-2">
+                                      {children}
+                                    </ol>
+                                  );
+                                },
+
+                                li({ children }) {
+                                  return <li className="pl-1 leading-7">{children}</li>;
+                                },
+
+                                table({ children }) {
+                                  return (
+                                    <div className="my-5 max-w-full overflow-x-auto rounded-xl border border-gray-200 dark:border-gray-700">
+                                      <table className="w-full min-w-560px border-collapse text-left text-sm">
+                                        {children}
+                                      </table>
+                                    </div>
+                                  );
+                                },
+
+                                thead({ children }) {
+                                  return (
+                                    <thead className="bg-gray-100 dark:bg-gray-800">
+                                      {children}
+                                    </thead>
+                                  );
+                                },
+
+                                th({ children }) {
+                                  return (
+                                    <th className="whitespace-nowrap border-b border-gray-200 px-4 py-3 font-semibold dark:border-gray-700">
+                                      {children}
+                                    </th>
+                                  );
+                                },
+
+                                td({ children }) {
+                                  return (
+                                    <td className="border-b border-gray-200 px-4 py-3 align-top dark:border-gray-700">
+                                      {children}
+                                    </td>
+                                  );
+                                },
                               }}
+                              
                             >
-                              {part.text}
+                              {part.text.replace(/<br\s*\/?>/gi, "\n")}
                             </ReactMarkdown>
                           );
                         })}
