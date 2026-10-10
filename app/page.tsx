@@ -1111,7 +1111,27 @@ export default function Home() {
               })}
             </>
           )}
-            
+          
+            {(status === "submitted" ||
+              (status === "streaming" &&
+                messages[messages.length - 1]?.role === "user")) && (
+              <div
+                className="flex w-full justify-start"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-3 px-1 py-3">
+                  <div className="flex items-center gap-1">
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.3s] dark:bg-gray-500" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 [animation-delay:-0.15s] dark:bg-gray-500" />
+                    <span className="h-2 w-2 animate-bounce rounded-full bg-gray-400 dark:bg-gray-500" />
+                  </div>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    HiChatAI is thinking
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Auto-scroll marker */}
             <div ref={messagesEndRef} />

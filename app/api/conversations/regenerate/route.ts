@@ -45,14 +45,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const latestAssistantMessage = conversation.messages.find(
-      (message) => message.role === "assistant"
-    );
+    const latestMessage = conversation.messages[0];
 
-    if (latestAssistantMessage) {
+    if (latestMessage?.role === "assistant") {
       await prisma.message.delete({
         where: {
-          id: latestAssistantMessage.id,
+          id: latestMessage.id,
         },
       });
     }
